@@ -1,0 +1,91 @@
+#include <WiFi.h>
+#include <WebServer.h>
+
+const int relayPin = 2; 
+const char* ssid = "ENG";  
+const char* password = "@#12121212";  
+
+WebServer server(80); 
+void handleRoot() {
+  String html = R"=====(
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ESP32 Relay Control</title>
+    <style>
+      body {font-family: Arial; text-align: center; margin-top: 50px;}
+      .button {
+        padding: 15px 30px;
+        font-size: 20px;
+        border: none;
+        border-radius: 5px;
+        color: white;
+        cursor: pointer;
+        margin: 10px;
+      }
+      .on {
+        background-color: #4CAF50; /* أخضر */
+      }
+      .off {
+        background-color: #f44336; /* أحمر */
+      }
+      .state {
+        font-size: 24px;
+        margin: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>ESP32 Relay Control</h1>
+    <div class="state">Current State: %STATE%</div>
+    <a href="/on"><button class="button on">ON</button></a>
+    <a href="/off"><button class="button off">OFF</button></a>
+  </body>
+  </html>
+  )=====";
+
+  String state = digitalRead(relayPin) ? "ON" : "OFF";
+  html.replace("%STATE%", state);
+  
+  server.send(200, "text/html", html);
+}
+
+void handleOn() {
+  digitalWrite(relayPin, HIGH);
+  server.sendHeader("Location", "/");
+  server.send(303);
+}
+
+void handleOff() {
+  digitalWrite(relayPin, LOW);
+  server.sendHeader("Location", "/");
+  server.send(303);
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(relayPin, OUTPUT);
+  digitalWrite(relayPin, LOW); 
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to WiFi...");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+
+  server.on("/", handleRoot);
+  server.on("/on", handleOn);
+  server.on("/off", handleOff);
+  
+  server.begin();
+  Serial.println("HTTP server started");
+}
+
+void loop() {
+  server.handleClient();
+}
